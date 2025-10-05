@@ -22,9 +22,17 @@ COPY frontend/package*.json ./
 # Force public registry and disable auth to avoid E401 in CI builders
 ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
     NPM_CONFIG_ALWAYS_AUTH=false \
-    NPM_CONFIG_USERCONFIG=/app/frontend/.npmrc
+    NPM_CONFIG_USERCONFIG=/app/frontend/.npmrc \
+    NPM_TOKEN= \
+    NODE_AUTH_TOKEN= \
+    npm_config__auth= \
+    npm_config_auth= \
+    NPM_CONFIG__AUTH= \
+    NPM_CONFIG_AUTH=
 RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/frontend/.npmrc \
-  && npm ci --prefer-offline --no-fund --no-audit
+  && npm config delete "//registry.npmjs.org/:_authToken" || true \
+  && npm config delete _auth || true \
+  && npm ci --prefer-offline --no-fund --no-audit --registry=https://registry.npmjs.org/
 
 # ===========================
 # Build frontend
@@ -44,9 +52,17 @@ COPY backend/package*.json ./
 # Force public registry and disable auth to avoid E401 in CI builders
 ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
     NPM_CONFIG_ALWAYS_AUTH=false \
-    NPM_CONFIG_USERCONFIG=/app/backend/.npmrc
+    NPM_CONFIG_USERCONFIG=/app/backend/.npmrc \
+    NPM_TOKEN= \
+    NODE_AUTH_TOKEN= \
+    npm_config__auth= \
+    npm_config_auth= \
+    NPM_CONFIG__AUTH= \
+    NPM_CONFIG_AUTH=
 RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/backend/.npmrc \
-  && npm ci --prefer-offline --no-fund --no-audit
+  && npm config delete "//registry.npmjs.org/:_authToken" || true \
+  && npm config delete _auth || true \
+  && npm ci --prefer-offline --no-fund --no-audit --registry=https://registry.npmjs.org/
 
 # ===========================
 # Build backend (TypeScript -> JavaScript)
