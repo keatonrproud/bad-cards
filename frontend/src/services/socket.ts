@@ -24,9 +24,10 @@ class SocketService {
 
     this.isConnecting = true;
 
-    // Connect to the backend server - use current origin in production, localhost in dev
-    const serverUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3002' 
+    // Connect to the backend server - use environment variables
+    const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+    const serverUrl = isDevelopment 
+      ? process.env.BACKEND_URL || 'http://localhost:3002'
       : window.location.origin;
 
     if (DEBUG) console.log('🔌 Connecting to game server at:', serverUrl);

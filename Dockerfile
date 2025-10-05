@@ -37,6 +37,8 @@ FROM frontend-deps AS frontend-builder
 WORKDIR /app/frontend
 # Copy entire frontend source (excluding node_modules by default Docker behavior)
 COPY frontend/ .
+# Copy root .env file for build-time environment variables
+COPY .env.production /app/.env
 RUN rm -rf dist && npm run build
 
 # ===========================
@@ -87,6 +89,9 @@ COPY --from=backend-deps --chown=node:node /app/backend/node_modules ./backend/n
 COPY --from=backend-builder --chown=node:node /app/backend/dist ./backend/dist
 COPY --from=frontend-builder --chown=node:node /app/frontend/dist ./frontend/dist
 
+# Copy environment file
+COPY .env.production /app/.env
+
 # Create non-root user
 RUN chown -R node:node /app
 USER node
@@ -94,15 +99,19 @@ USER node
 # Set working directory for backend
 WORKDIR /app/backend
 
+# Accept build argument for backend port
+ARG BACKEND_PORT=3002
+ENV PORT=${BACKEND_PORT}
+
 # Expose backend port
-EXPOSE 3002
+EXPOSE ${BACKEND_PORT}
 
 # Add Node.js optimization flags for smaller memory
 ENV NODE_OPTIONS="--max-old-space-size=192 --no-warnings"
 
 # Health check (adjust endpoint as needed)
 HEALTHCHECK --interval=30s --timeout=3s \
-  CMD curl -f http://localhost:3002/api/health || exit 1
+  CMD curl -f http://localhost:${BACKEND_PORT}/api/health || exit 1
 
 # Start the backend app with optimization flags
 CMD ["node", "--enable-source-maps", "--max-old-space-size=192", "dist/index.js"]

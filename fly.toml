@@ -5,11 +5,11 @@ primary_region = 'yyz'
 [build]
   dockerfile = 'Dockerfile'
   target = 'production'
+  [build.args]
+    BACKEND_PORT = '3002'
 
 [env]
   NODE_ENV = 'production'
-  PORT = '3002'
-  FRONTEND_URL = 'https://bad-cards.fly.dev'
 
 [deploy]
   strategy = 'rolling'

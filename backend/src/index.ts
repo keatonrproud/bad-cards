@@ -5,6 +5,10 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import gameRoutes from './routes/game';
 import { GameLogicManager } from './lib/gameLogic';
@@ -16,10 +20,12 @@ const server = createServer(app);
 // Initialize game manager
 export const gameManager = new GameLogicManager();
 
-// CORS configuration
-const CORS_ORIGIN = process.env.NODE_ENV === 'production' 
-  ? process.env.FRONTEND_URL || 'https://bad-cards.com'
-  : 'http://localhost:3000';
+// Environment configuration
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const BACKEND_PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT || '3002');
+const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' 
+  ? process.env.FRONTEND_URL || 'https://bad-cards.fly.dev'
+  : 'http://localhost:3000');
 
 app.use(cors({
   origin: CORS_ORIGIN,
@@ -46,7 +52,12 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    rooms: roomStats
+    rooms: roomStats,
+    environment: {
+      NODE_ENV,
+      BACKEND_PORT,
+      CORS_ORIGIN
+    }
   });
 });
 
@@ -95,8 +106,6 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 3002;
-
 // Admin cleanup endpoint
 app.post('/api/admin/cleanup', (req, res) => {
   gameManager.manualCleanup();
@@ -107,8 +116,9 @@ app.post('/api/admin/cleanup', (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`🃏 Bad Cards server running on port ${PORT}`);
+server.listen(BACKEND_PORT, () => {
+  console.log(`🃏 Bad Cards server running on port ${BACKEND_PORT}`);
+  console.log(`🌐 Environment: ${NODE_ENV}`);
   console.log(`🌐 CORS origin: ${CORS_ORIGIN}`);
   console.log(`🎮 Game manager initialized with ${gameManager.getAllRooms().length} active rooms`);
   console.log(`🧹 Room cleanup running every ${gameManager['CLEANUP_CONFIG']?.CLEANUP_INTERVAL / 1000 / 60 || 5} minutes`);
