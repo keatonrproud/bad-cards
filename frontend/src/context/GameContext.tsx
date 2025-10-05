@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameRoom, Player, GameContextType } from '../types/game';
 import { socketService } from '../services/socket';
@@ -21,8 +21,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCreating, setIsCreating] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   
+  const playerIdRef = useRef<string | null>(null);
+  const hasMountedListenersRef = useRef(false);
+  const locationPathRef = useRef<string>('/');
+  
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    locationPathRef.current = location.pathname;
+  }, [location.pathname]);
 
   // Persist playerId to sessionStorage whenever it changes
   useEffect(() => {
@@ -31,6 +39,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       sessionStorage.removeItem(STORAGE_KEYS.PLAYER_ID);
     }
+    playerIdRef.current = playerId;
   }, [playerId]);
 
   // Persist roomId to sessionStorage whenever currentRoom changes
@@ -56,8 +65,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🎮 GameContext: Setting up socket listeners');
     
     // Connect to socket when context mounts
-    const socket = socketService.connect();
+        const socket = socketService.connect();
     setIsConnected(socket.connected);
+
+    if (hasMountedListenersRef.current) {
+      return () => {};
+    }
+    hasMountedListenersRef.current = true;
 
     // Set up socket listeners with proper error handling
     socketService.onRoomCreated(({ room, playerId: newPlayerId }) => {
@@ -69,9 +83,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsCreating(false);
       
       // Navigate to game page
-      setTimeout(() => {
-        navigate('/game');
-      }, 100);
+      if (locationPathRef.current !== '/game') {
+        setTimeout(() => {
+          navigate('/game');
+        }, 100);
+      }
     });
 
     socketService.onPlayerJoined(({ room, playerId: newPlayerId }) => {
@@ -84,9 +100,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentPlayer(room.players.find(p => p.id === newPlayerId) || null);
         
         // Navigate to game page
-        setTimeout(() => {
-          navigate('/game');
-        }, 100);
+        if (locationPathRef.current !== '/game') {
+          setTimeout(() => {
+            navigate('/game');
+          }, 100);
+        }
       }
       setError(null);
     });
@@ -100,7 +118,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       
       // Navigate to game page if not already there
-      if (location.pathname !== '/game') {
+      if (locationPathRef.current !== '/game') {
         setTimeout(() => {
           navigate('/game');
         }, 100);
@@ -116,7 +134,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onGameStarted(({ room }) => {
-      console.log('🚀 GameContext: Game started');
+      console.log('🚀 GameContext: Game started', room);
+      console.log('🚀 GameContext: Room status changed to:', room.status);
+      console.log('🚀 GameContext: Current round:', room.currentRound);
       setCurrentRoom(room);
       if (playerId) {
         setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
@@ -126,24 +146,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketService.onRoundStarted(({ room }) => {
       console.log('🔄 GameContext: Round started');
       setCurrentRoom(room);
-      if (playerId) {
-        setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
+      const pid = playerIdRef.current;
+      if (pid) {
+        setCurrentPlayer(room.players.find(p => p.id === pid) || null);
       }
     });
 
     socketService.onCardsPlayed(({ room }) => {
-      console.log('🃏 GameContext: Cards played');
+      console.log('�� GameContext: Cards played');
       setCurrentRoom(room);
-      if (playerId) {
-        setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
+      const pid = playerIdRef.current;
+      if (pid) {
+        setCurrentPlayer(room.players.find(p => p.id === pid) || null);
       }
     });
 
     socketService.onRoundComplete(({ room }) => {
-      console.log('🏆 GameContext: Round complete');
+      console.log('�� GameContext: Round complete');
       setCurrentRoom(room);
-      if (playerId) {
-        setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
+      const pid = playerIdRef.current;
+      if (pid) {
+        setCurrentPlayer(room.players.find(p => p.id === pid) || null);
       }
     });
 

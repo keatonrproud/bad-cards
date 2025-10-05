@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bad Cards - Test Multiple Players</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            height: 90vh;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        .player-frame {
+            display: flex;
+            flex-direction: column;
+        }
+        .player-title {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px 8px 0 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Bad Cards - 3 Player Test</h2>
+    <div class="container">
+        <div class="player-frame">
+            <div class="player-title">Player 1 (Host)</div>
+            <iframe src="http://localhost:3000" id="player1"></iframe>
+        </div>
+        <div class="player-frame">
+            <div class="player-title">Player 2</div>
+            <iframe src="http://localhost:3000" id="player2"></iframe>
+        </div>
+        <div class="player-frame">
+            <div class="player-title">Player 3</div>
+            <iframe src="http://localhost:3000" id="player3"></iframe>
+        </div>
+    </div>
+    <script>
+        // Allow time for frames to load
+        setTimeout(() => {
+            console.log('Test environment ready. You can now:');
+            console.log('1. Create a room with Player 1');
+            console.log('2. Join the room with Players 2 and 3');
+            console.log('3. Start the game with Player 1');
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -247,8 +247,8 @@ const WaitingRoomGame = ({ players, playerId, roomId }: { players: Player[]; pla
 };
 
 export const GameBoard: React.FC = () => {
-  const { currentRoom, currentPlayer, playerId } = useGame();
-
+  const { currentRoom, currentPlayer, playerId, isConnected } = useGame();
+  
   if (!currentRoom || !currentPlayer || !playerId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -291,9 +291,19 @@ export const GameBoard: React.FC = () => {
       
       <div>
         <h2 className="text-2xl font-bold mb-2">Waiting for game to start...</h2>
-        <p className="text-muted-foreground mb-4">
+        <p className="text-muted-foreground mb-2">
           {currentRoom.players.length}/{currentRoom.maxPlayers} players in room
         </p>
+        {!currentPlayer.isHost && currentRoom.players.length >= 3 && (
+          <p className="text-sm text-blue-600 font-medium mb-4">
+            ⏳ Waiting for room creator to start the game
+          </p>
+        )}
+        {currentRoom.players.length < 3 && (
+          <p className="text-sm text-orange-600 font-medium mb-4">
+            Need at least 3 players to start
+          </p>
+        )}
       </div>
 
       {/* Interactive Mini-Game */}
@@ -308,7 +318,8 @@ export const GameBoard: React.FC = () => {
           <Button 
             onClick={() => socketService.startGame(currentRoom.id)}
             size="lg"
-            className="bg-game-blue hover:bg-game-blue-dark animate-pulse"
+            disabled={!isConnected}
+            className="bg-game-blue hover:bg-game-blue-dark animate-pulse disabled:opacity-50"
           >
             Start Game
           </Button>
@@ -337,15 +348,25 @@ export const GameBoard: React.FC = () => {
             🎉 {winner.name} wins with {winner.score} points!
           </p>
         </div>
-        {currentPlayer.isHost && (
+        <div className="flex gap-3 justify-center">
+          {currentPlayer.isHost && (
+            <Button 
+              onClick={() => socketService.resetGame(currentRoom.id)}
+              size="lg"
+              className="bg-game-blue hover:bg-game-blue-dark"
+            >
+              Play Again
+            </Button>
+          )}
           <Button 
-            onClick={() => window.location.reload()}
+            onClick={() => window.location.href = '/'}
             size="lg"
-            className="bg-game-blue hover:bg-game-blue-dark"
+            variant="outline"
+            className="border-game-blue text-game-blue hover:bg-game-blue hover:text-white"
           >
-            New Game
+            Back to Home
           </Button>
-        )}
+        </div>
       </div>
     );
   };
@@ -429,6 +450,11 @@ export const GameBoard: React.FC = () => {
             <p className="text-lg font-medium mb-2">
               {isJudge ? 'Choose the winning play!' : 'Judge is selecting the winner...'}
             </p>
+            {isJudge && (
+              <p className="text-sm text-muted-foreground mb-4">
+                Click on the card combination you think is funniest
+              </p>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -439,7 +465,9 @@ export const GameBoard: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`p-4 border-2 rounded-lg ${
-                  isJudge ? 'cursor-pointer hover:bg-accent' : ''
+                  isJudge 
+                    ? 'cursor-pointer hover:bg-accent hover:border-game-blue hover:shadow-md transition-all duration-200 active:scale-95' 
+                    : ''
                 }`}
                 onClick={isJudge ? () => handleJudgePlay(play.playerId) : undefined}
               >

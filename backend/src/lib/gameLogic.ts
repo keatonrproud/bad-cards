@@ -578,4 +578,38 @@ export class GameLogicManager {
 
     return mini;
   }
+
+  // Reset a finished game back to waiting state for replay
+  resetGame(roomId: string, hostPlayerId: string): GameRoom | null {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+
+    // Verify the requester is the host
+    const host = room.players.find(p => p.id === hostPlayerId && p.isHost);
+    if (!host) {
+      throw new Error('Only the room host can restart the game');
+    }
+
+    // Can only reset finished games
+    if (room.status !== 'finished') {
+      throw new Error('Can only restart finished games');
+    }
+
+    // Reset game state
+    room.status = 'waiting';
+    room.currentRound = undefined;
+    room.rounds = [];
+    
+    // Reset all players
+    room.players.forEach(player => {
+      player.hand = [];
+      player.score = 0;
+    });
+
+    // Re-initialize waiting room mini-game
+    this.getOrCreateWaitingMini(room);
+
+    console.log(`🔄 Game reset in room "${room.name}" by ${host.name}`);
+    return room;
+  }
 }

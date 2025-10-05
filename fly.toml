@@ -32,14 +32,16 @@ primary_region = 'yyz'
 
   [services.concurrency]
     type = 'connections'
-    hard_limit = 40
-    soft_limit = 30
+    hard_limit = 50
+    soft_limit = 40
 
+  # TCP check for basic connectivity
   [[services.tcp_checks]]
     interval = '15s'
     timeout = '5s'
     grace_period = '10s'
 
+  # HTTP check
   [[services.http_checks]]
     interval = '10s'
     timeout = '5s'

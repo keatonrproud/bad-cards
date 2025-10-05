@@ -4,8 +4,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { APP_PORT, CORS_ORIGIN, IS_PRODUCTION } from './config/env';
 
 import gameRoutes from './routes/game';
 import { GameLogicManager } from './lib/gameLogic';
@@ -18,6 +16,10 @@ const server = createServer(app);
 export const gameManager = new GameLogicManager();
 
 // CORS configuration
+const CORS_ORIGIN = process.env.NODE_ENV === 'production' 
+  ? process.env.FRONTEND_URL || 'https://bad-cards.com'
+  : 'http://localhost:3000';
+
 app.use(cors({
   origin: CORS_ORIGIN,
   credentials: true,
@@ -55,7 +57,11 @@ const io = new Server(server, {
     credentials: true
   },
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e8
 });
 
 // Initialize socket handler
@@ -70,7 +76,7 @@ io.on('connection', (socket) => {
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(500).json({ 
-    error: IS_PRODUCTION ? 'Internal server error' : err.message 
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message 
   });
 });
 
@@ -78,6 +84,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
+
+const PORT = process.env.PORT || 3002;
 
 // Admin cleanup endpoint
 app.post('/api/admin/cleanup', (req, res) => {
@@ -89,18 +97,9 @@ app.post('/api/admin/cleanup', (req, res) => {
   });
 });
 
-// In production, serve the frontend build from the container
-if (IS_PRODUCTION) {
-  const frontendDistPath = path.join(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendDistPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
-  });
-}
-
-server.listen(APP_PORT, () => {
-  console.log(`🃏 Bad Cards server running on port ${APP_PORT}`);
-  console.log(`🌐 CORS origin: ${typeof CORS_ORIGIN === 'string' ? CORS_ORIGIN : 'dynamic'}`);
+server.listen(PORT, () => {
+  console.log(`🃏 Bad Cards server running on port ${PORT}`);
+  console.log(`🌐 CORS origin: ${CORS_ORIGIN}`);
   console.log(`🎮 Game manager initialized with ${gameManager.getAllRooms().length} active rooms`);
   console.log(`🧹 Room cleanup running every ${gameManager['CLEANUP_CONFIG']?.CLEANUP_INTERVAL / 1000 / 60 || 5} minutes`);
 });

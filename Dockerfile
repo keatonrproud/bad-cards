@@ -19,7 +19,7 @@ RUN mkdir -p /app/frontend /app/backend
 FROM base AS frontend-deps
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-# Public registry for installs
+# Disable npm auth for public packages
 ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 RUN npm ci --prefer-offline --no-fund --no-audit
 
@@ -29,10 +29,11 @@ RUN npm ci --prefer-offline --no-fund --no-audit
 FROM frontend-deps AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/public ./public
-COPY frontend/index.html ./
-COPY frontend/postcss.config.cjs ./
-COPY frontend/tailwind.config.js ./
-COPY frontend/vite.config.ts ./
+COPY frontend/*.js ./
+COPY frontend/*.cjs ./
+COPY frontend/*.ts ./
+COPY frontend/*.json ./
+COPY frontend/*.html ./
 COPY frontend/src ./src
 RUN rm -rf dist && npm run build
 
@@ -42,7 +43,7 @@ RUN rm -rf dist && npm run build
 FROM base AS backend-deps
 WORKDIR /app/backend
 COPY backend/package*.json ./
-# Public registry for installs
+# Disable npm auth for public packages
 ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 # Install all dependencies including devDependencies for building
 RUN npm ci --prefer-offline --no-fund --no-audit
@@ -52,17 +53,20 @@ RUN npm ci --prefer-offline --no-fund --no-audit
 # ===========================
 FROM backend-deps AS backend-builder
 WORKDIR /app/backend
-# Copy source code and build config
+
+# Copy source code first to break cache when source changes
 COPY backend/src ./src
 COPY backend/tsconfig.json ./
 COPY backend/eslint.config.js ./
+
 # Clean dist directory and build
 RUN rm -rf dist && npm run build
-# Prune dev dependencies for production
+
+# Now prune dev dependencies for the final stage
 RUN npm prune --production
 
 # ===========================
-# Production Image - Alpine for faster startup
+# Production Image - Alpine
 # ===========================
 FROM node:20.17.0-alpine AS production
 WORKDIR /app
@@ -85,12 +89,12 @@ WORKDIR /app/backend
 # Expose backend port
 EXPOSE 3002
 
-# Node.js optimization flags
-ENV NODE_OPTIONS="--max-old-space-size=256 --no-warnings"
+# Add Node.js optimization flags for smaller memory
+ENV NODE_OPTIONS="--max-old-space-size=192 --no-warnings"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s \
+# Health check (adjust endpoint as needed)
+HEALTHCHECK --interval=30s --timeout=3s \
   CMD curl -f http://localhost:3002/api/health || exit 1
 
-# Start the backend app
-CMD ["node", "--enable-source-maps", "--max-old-space-size=256", "dist/index.js"]
+# Start the backend app with optimization flags
+CMD ["node", "--enable-source-maps", "--max-old-space-size=192", "dist/index.js"]
