@@ -38,6 +38,27 @@ router.get('/rooms/:roomId', (req, res) => {
   }
 });
 
+// Validate player name
+router.post('/validate-name', (req, res) => {
+  try {
+    const { playerName } = req.body;
+    
+    if (!playerName) {
+      return res.status(400).json({ error: 'Player name is required' });
+    }
+
+    const validation = gameManager.validatePlayerName(playerName);
+    
+    if (validation.isValid) {
+      res.json({ valid: true });
+    } else {
+      res.status(400).json({ valid: false, error: validation.error });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to validate name' });
+  }
+});
+
 // Health check
 router.get('/health', (req, res) => {
   res.json({ 

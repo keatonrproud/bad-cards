@@ -112,4 +112,27 @@ describe('Player Reconnection', () => {
     
     expect(aliceAfter?.score).toBe(5);
   });
+
+  it('should allow player to rejoin room with same name without "name taken" error', () => {
+    // Arrange: Player disconnects (but stays in room)
+    gameManager.setPlayerConnection(roomId, playerId, false);
+    
+    const roomBeforeRejoin = gameManager.getRoom(roomId);
+    expect(roomBeforeRejoin).toBeDefined();
+    const playerBeforeRejoin = roomBeforeRejoin!.players.find(p => p.name === 'Alice');
+    expect(playerBeforeRejoin).toBeDefined();
+    expect(playerBeforeRejoin?.isConnected).toBe(false);
+
+    // Act: Try to join room again with same name (simulates frontend rejoin)
+    const result = gameManager.joinRoom(roomId, 'Alice');
+    
+    // Assert: Should succeed and return the existing player's ID
+    expect(result).toBeDefined();
+    expect(result?.playerId).toBe(playerId);
+    expect(result?.room.players.length).toBe(1); // Should not create duplicate player
+    
+    const playerAfterRejoin = result?.room.players.find(p => p.name === 'Alice');
+    expect(playerAfterRejoin?.isConnected).toBe(true);
+    expect(playerAfterRejoin?.id).toBe(playerId);
+  });
 });

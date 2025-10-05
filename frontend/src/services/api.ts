@@ -29,6 +29,9 @@ export const gameAPI = {
   // Get specific room details
   getRoom: (roomId: string) => api.get(`/game/rooms/${roomId}`),
   
+  // Validate player name
+  validateName: (playerName: string) => api.post<{ valid: boolean; error?: string }>('/game/validate-name', { playerName }),
+  
   // Health check
   health: () => api.get('/game/health'),
 };

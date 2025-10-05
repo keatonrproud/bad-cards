@@ -62,7 +62,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [error]);
 
   useEffect(() => {
-    console.log('🎮 GameContext: Setting up socket listeners');
+
     
     // Connect to socket when context mounts
         const socket = socketService.connect();
@@ -75,7 +75,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up socket listeners with proper error handling
     socketService.onRoomCreated(({ room, playerId: newPlayerId }) => {
-      console.log('🎉 GameContext: Room created, navigating to game');
+
       setCurrentRoom(room);
       setPlayerId(newPlayerId);
       setCurrentPlayer(room.players.find(p => p.id === newPlayerId) || null);
@@ -91,7 +91,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onPlayerJoined(({ room, playerId: newPlayerId }) => {
-      console.log('👋 GameContext: Joined room, updating state');
+
       setCurrentRoom(room);
       setIsJoining(false);
       
@@ -110,7 +110,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onPlayerReconnected(({ room, playerId: reconnectedPlayerId }) => {
-      console.log('🔌 GameContext: Player reconnected successfully');
+
       setCurrentRoom(room);
       setPlayerId(reconnectedPlayerId);
       setCurrentPlayer(room.players.find(p => p.id === reconnectedPlayerId) || null);
@@ -126,7 +126,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onRoomUpdate(({ room }) => {
-      console.log('🔄 GameContext: Room updated');
+
       setCurrentRoom(room);
       if (playerId) {
         setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
@@ -134,9 +134,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onGameStarted(({ room }) => {
-      console.log('🚀 GameContext: Game started', room);
-      console.log('🚀 GameContext: Room status changed to:', room.status);
-      console.log('🚀 GameContext: Current round:', room.currentRound);
+
       setCurrentRoom(room);
       if (playerId) {
         setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
@@ -144,7 +142,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onRoundStarted(({ room }) => {
-      console.log('🔄 GameContext: Round started');
+
       setCurrentRoom(room);
       const pid = playerIdRef.current;
       if (pid) {
@@ -153,7 +151,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onCardsPlayed(({ room }) => {
-      console.log('�� GameContext: Cards played');
+
       setCurrentRoom(room);
       const pid = playerIdRef.current;
       if (pid) {
@@ -162,7 +160,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onRoundComplete(({ room }) => {
-      console.log('�� GameContext: Round complete');
+
       setCurrentRoom(room);
       const pid = playerIdRef.current;
       if (pid) {
@@ -171,7 +169,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onGameComplete(({ room }) => {
-      console.log('🎊 GameContext: Game complete');
+
       setCurrentRoom(room);
       if (playerId) {
         setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
@@ -179,7 +177,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socketService.onPlayerLeft(({ room }) => {
-      console.log('👋 GameContext: Player left');
+
       setCurrentRoom(room);
       if (playerId) {
         setCurrentPlayer(room.players.find(p => p.id === playerId) || null);
@@ -215,7 +213,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Handle socket connection events
     socket.on('connect', () => {
-      console.log('✅ GameContext: Socket connected');
+
       setIsConnected(true);
       setError(null);
       
@@ -225,20 +223,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedPlayerId = sessionStorage.getItem(STORAGE_KEYS.PLAYER_ID);
       
       if (storedRoomId && storedPlayerId) {
-        console.log('🔄 Attempting to reconnect to room:', storedRoomId, 'as player:', storedPlayerId);
+
         setIsReconnecting(true);
         socketService.reconnectPlayer(storedRoomId, storedPlayerId);
       }
     });
     
     socket.on('disconnect', () => {
-      console.log('❌ GameContext: Socket disconnected');
+
       setIsConnected(false);
       setError('Disconnected from server. Trying to reconnect...');
     });
 
     socket.on('connect_error', () => {
-      console.log('❌ GameContext: Socket connection error');
+
       setIsConnected(false);
       setError('Cannot connect to game server. Please check if it\'s running.');
       setIsJoining(false);
@@ -247,7 +245,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
-      console.log('🧹 GameContext: Cleaning up listeners');
+
       socketService.removeAllListeners();
       socket.off('connect');
       socket.off('disconnect');

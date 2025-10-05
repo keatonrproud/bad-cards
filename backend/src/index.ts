@@ -122,11 +122,6 @@ app.post('/api/admin/cleanup', (req, res) => {
 });
 
 server.listen(BACKEND_PORT, () => {
-  console.log(`🃏 Bad Cards server running on port ${BACKEND_PORT}`);
-  console.log(`🌐 Environment: ${NODE_ENV}`);
-  console.log(`🌐 CORS origin: ${CORS_ORIGIN}`);
-  console.log(`🎮 Game manager initialized with ${gameManager.getAllRooms().length} active rooms`);
-  console.log(`🧹 Room cleanup running every ${gameManager['CLEANUP_CONFIG']?.CLEANUP_INTERVAL / 1000 / 60 || 5} minutes`);
 });
 
 // Graceful shutdown
@@ -135,7 +130,7 @@ const gracefulShutdown = (signal: string) => {
   
   // Stop accepting new connections
   server.close(() => {
-    console.log('🔌 HTTP server closed');
+    
     
     // Cleanup game manager
     gameManager.shutdown();

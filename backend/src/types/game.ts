@@ -50,7 +50,6 @@ export interface GameRoom {
     judgeTimer: number;
   };
   createdAt: Date;
-  waitingMini?: WaitingMiniState;
 }
 
 export interface GameState {
@@ -69,8 +68,6 @@ export interface SocketEvents {
   'play-cards': (data: { roomId: string; cards: BlackCard[] }) => void;
   'judge-play': (data: { roomId: string; playId: string }) => void;
   'next-round': (data: { roomId: string }) => void;
-  'mini-join': (data: { roomId: string }) => void;
-  'mini-move': (data: { roomId: string; x: number; y: number }) => void;
   
   // Server to Client
   'room-created': (data: { room: GameRoom; playerId: string }) => void;
@@ -83,27 +80,5 @@ export interface SocketEvents {
   'round-complete': (data: { room: GameRoom; winner: Player }) => void;
   'game-complete': (data: { room: GameRoom; winner: Player }) => void;
   'room-update': (data: { room: GameRoom }) => void;
-  'mini-state': (data: { roomId: string; state: WaitingMiniState }) => void;
   'error': (data: { message: string }) => void;
-}
-
-export interface WaitingMiniState {
-  width: number;
-  height: number;
-  items: MiniItem[];
-  players: Record<string, MiniPlayerState>;
-}
-
-export interface MiniItem {
-  id: string;
-  x: number;
-  y: number;
-  type: 'star' | 'heart' | 'zap';
-  collectedBy?: string;
-}
-
-export interface MiniPlayerState {
-  x: number;
-  y: number;
-  score: number;
 }

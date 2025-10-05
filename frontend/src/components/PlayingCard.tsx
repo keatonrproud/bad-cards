@@ -23,82 +23,70 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
   size = 'md'
 }) => {
   const sizeClasses = {
-    sm: 'w-24 h-32 text-xs p-2',
-    md: 'w-32 h-44 text-sm p-3',
-    lg: 'w-40 h-56 text-base p-4'
+    sm: 'w-32 h-24 sm:w-36 sm:h-28 text-xs sm:text-sm p-2',
+    md: 'w-40 h-32 sm:w-44 sm:h-36 text-sm sm:text-base p-3',
+    lg: 'w-48 h-36 sm:w-56 sm:h-44 text-base sm:text-lg p-4'
   };
 
   const baseClasses = cn(
     // Base card styling with consistent aspect ratio
     'relative rounded-xl border-2 transition-all duration-200 select-none',
     'flex items-center justify-center text-center font-medium',
-    'shadow-md hover:shadow-lg',
+    'shadow-md hover:shadow-lg overflow-hidden', // Add overflow hidden
     
     // Size classes
     sizeClasses[size],
     
-    // Card type styling
+    // Card type styling using theme colors
     type === 'white' 
-      ? 'bg-white text-gray-900 border-gray-300' 
-      : 'bg-gray-900 text-white border-gray-700',
+      ? 'bg-card text-card-foreground border-border' 
+      : 'bg-background text-foreground border-border',
     
     // Interactive states
     isSelectable && 'cursor-pointer hover:scale-105 active:scale-95',
-    isSelected && 'ring-4 ring-blue-500 ring-offset-2 scale-105 shadow-xl',
+    isSelected && 'ring-4 ring-primary ring-offset-2 ring-offset-background scale-105 shadow-xl',
     
     className
   );
 
-  const cardContent = (
-    <div className="w-full h-full flex items-center justify-center p-1">
-      <p className={cn(
-        'leading-relaxed text-center break-words hyphens-auto',
-        type === 'white' ? 'text-gray-900' : 'text-white'
-      )}>
-        {card.text}
-      </p>
-    </div>
-  );
-
-  const motionProps = {
-    initial: { opacity: 0, scale: 0.8 },
-    animate: { opacity: 1, scale: 1 },
-    transition: { duration: 0.3, ease: "easeOut" },
-    layout: true
-  };
-
-  if (isSelectable && onClick) {
-    return (
-      <motion.div
-        className={baseClasses}
-        onClick={onClick}
-        whileHover={{ scale: isSelected ? 1.05 : 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        {...motionProps}
-      >
-        {cardContent}
-        
-        {/* Selection indicator */}
-        {isSelected && (
-          <motion.div
-            className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            ✓
-          </motion.div>
-        )}
-      </motion.div>
-    );
-  }
-
   return (
-    <motion.div 
+    <motion.div
       className={baseClasses}
-      {...motionProps}
+      onClick={isSelectable ? onClick : undefined}
+      whileHover={isSelectable ? { scale: 1.02 } : {}}
+      whileTap={isSelectable ? { scale: 0.98 } : {}}
+      layout
     >
-      {cardContent}
+      {/* Card content with proper text containment */}
+      <div className="w-full h-full flex items-center justify-center p-1">
+        <p className={cn(
+          'leading-tight text-center break-words hyphens-auto',
+          'overflow-hidden', // Prevent text overflow
+          // Responsive line clamping
+          size === 'sm' && 'line-clamp-3 sm:line-clamp-4',
+          size === 'md' && 'line-clamp-4 sm:line-clamp-5', 
+          size === 'lg' && 'line-clamp-5 sm:line-clamp-6'
+        )}>
+          {card.text}
+        </p>
+      </div>
+
+      {/* Selection indicator */}
+      {isSelected && (
+        <motion.div
+          className="absolute inset-0 bg-primary/20 rounded-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        />
+      )}
+
+      {/* Hover effect for selectable cards */}
+      {isSelectable && (
+        <motion.div
+          className="absolute inset-0 bg-primary/10 rounded-xl opacity-0 hover:opacity-100 transition-opacity"
+        />
+      )}
     </motion.div>
   );
 };

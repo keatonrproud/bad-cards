@@ -15,7 +15,7 @@ export class SocketHandler {
   }
 
   handleConnection(socket: Socket) {
-    if (DEBUG) console.log('User connected:', socket.id);
+
 
     socket.on('connection-test', (_data, ack) => {
       if (ack && typeof ack === 'function') {
@@ -38,7 +38,7 @@ export class SocketHandler {
         
         socket.emit('room-created', { room, playerId });
         socket.emit('room-update', { room });
-        if (DEBUG) console.log(`Room created: ${room.name} by ${playerName}`);
+
       } catch (error) {
         socket.emit('error', { message: (error as Error).message });
       }
@@ -69,7 +69,7 @@ export class SocketHandler {
         
         // Notify all players in room
         this.io.to(room.id).emit('room-update', { room });
-        if (DEBUG) console.log(`${playerName} joined room: ${room.name}`);
+
       } catch (error) {
         socket.emit('error', { message: (error as Error).message });
       }
@@ -114,14 +114,14 @@ export class SocketHandler {
         const playerId = this.socketPlayers.get(socket.id);
         
         if (!playerId) {
-          if (DEBUG) console.warn(`[start-game] player not found for socket`, { socketId: socket.id });
+
           socket.emit('error', { message: 'Player not found' });
           return;
         }
         const room = this.gameManager.startGame(roomId, playerId);
 
         if (!room) {
-          if (DEBUG) console.warn(`[start-game] gameManager.startGame returned null`, { roomId, playerId });
+
           socket.emit('error', { message: 'Failed to start game' });
           return;
         }
@@ -129,7 +129,7 @@ export class SocketHandler {
         // Notify all players
         this.io.to(roomId).emit('game-started', { room });
         this.io.to(roomId).emit('round-started', { room });
-        if (DEBUG) console.log(`Game started in room: ${room.name}`);
+
       } catch (error) {
         console.error(`[start-game] error`, { error: (error as Error).message });
         socket.emit('error', { message: (error as Error).message });
@@ -157,7 +157,7 @@ export class SocketHandler {
         // Notify all players
         this.io.to(roomId).emit('game-reset', { room });
         this.io.to(roomId).emit('room-update', { room });
-        if (DEBUG) console.log(`Game reset in room: ${room.name}`);
+
         
       } catch (error) {
         console.error(`[reset-game] error`, { error: (error as Error).message });
@@ -221,40 +221,28 @@ export class SocketHandler {
       }
     });
 
-    // Handle mini-game join/move
-    socket.on('mini-join', (data: { roomId: string }) => {
+    // Handle next round
+    socket.on('next-round', (data: { roomId: string }) => {
       try {
         const { roomId } = data;
         const playerId = this.socketPlayers.get(socket.id);
+        
         if (!playerId) {
           socket.emit('error', { message: 'Player not found' });
           return;
         }
-        const state = this.gameManager.miniJoin(roomId, playerId);
-        if (!state) {
-          socket.emit('error', { message: 'Room not found' });
+        
+        const room = this.gameManager.nextRound(roomId, playerId);
+        
+        if (!room) {
+          socket.emit('error', { message: 'Failed to start next round' });
           return;
         }
-        this.io.to(roomId).emit('mini-state', { roomId, state });
-      } catch (error) {
-        socket.emit('error', { message: (error as Error).message });
-      }
-    });
-
-    socket.on('mini-move', (data: { roomId: string; x: number; y: number }) => {
-      try {
-        const { roomId, x, y } = data;
-        const playerId = this.socketPlayers.get(socket.id);
-        if (!playerId) {
-          socket.emit('error', { message: 'Player not found' });
-          return;
-        }
-        const state = this.gameManager.miniMove(roomId, playerId, x, y);
-        if (!state) {
-          socket.emit('error', { message: 'Room not found' });
-          return;
-        }
-        this.io.to(roomId).emit('mini-state', { roomId, state });
+        
+        // Notify all players
+        this.io.to(roomId).emit('round-started', { room });
+        this.io.to(roomId).emit('room-update', { room });
+        
       } catch (error) {
         socket.emit('error', { message: (error as Error).message });
       }
@@ -262,7 +250,7 @@ export class SocketHandler {
 
     // Handle disconnect
     socket.on('disconnect', () => {
-      if (DEBUG) console.log('User disconnected:', socket.id);
+
       
       const playerId = this.socketPlayers.get(socket.id);
       if (playerId) {
@@ -277,7 +265,7 @@ export class SocketHandler {
           if (player) {
             // Mark player as disconnected with timestamp
             this.gameManager.setPlayerConnection(room.id, playerId, false);
-            if (DEBUG) console.log(`🔌 Player "${player.name}" disconnected from room "${room.name}"`);
+
             this.io.to(room.id).emit('room-update', { room });
           }
         });
@@ -307,7 +295,7 @@ export class SocketHandler {
           // Disconnect the old socket if it exists
           const existingSocket = this.io.sockets.sockets.get(existingSocketId);
           if (existingSocket) {
-            if (DEBUG) console.log(`🔌 Disconnecting old socket for player "${player.name}"`);
+
             existingSocket.disconnect();
           }
         }
@@ -327,7 +315,7 @@ export class SocketHandler {
         
         // Notify other players
         this.io.to(roomId).emit('room-update', { room });
-        if (DEBUG) console.log(`🔌 Player "${player.name}" reconnected to room "${room.name}"`);
+
       } catch (error) {
         socket.emit('error', { message: (error as Error).message });
       }

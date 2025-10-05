@@ -7,7 +7,6 @@ export class GameLogicManager {
   private whiteCardDeck: WhiteCard[] = [];
   private blackCardDeck: BlackCard[] = [];
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private miniSpawnIntervals: Map<string, NodeJS.Timeout> = new Map();
   private roundTimers: Map<string, NodeJS.Timeout> = new Map();
   private roomUpdateCallback?: (room: GameRoom) => void;
 
@@ -18,14 +17,6 @@ export class GameLogicManager {
     FINISHED_GAME_TIMEOUT: 60 * 60 * 1000,       // 1 hour after game finished  
     INACTIVE_WAITING_TIMEOUT: 2 * 60 * 60 * 1000, // 2 hours in waiting state
     CLEANUP_INTERVAL: 5 * 60 * 1000              // Check every 5 minutes
-  };
-
-  private readonly MINI_CONFIG = {
-    WIDTH: 720,
-    HEIGHT: 420,
-    ACTIVE_CAP: 18,
-    SPAWN_MS: 600,
-    COLLISION_RADIUS: 24
   };
 
   constructor() {
@@ -87,7 +78,7 @@ export class GameLogicManager {
 
       if (shouldDelete) {
         roomsToDelete.push(roomId);
-        console.log(`🧹 Cleaning up room "${room.name}" (${roomId}): ${reason}`);
+
       } else {
         // Clean up disconnected players from active rooms
         this.cleanupDisconnectedPlayers(room, now);
@@ -101,7 +92,7 @@ export class GameLogicManager {
     });
 
     if (roomsToDelete.length > 0) {
-      console.log(`🧹 Cleaned up ${roomsToDelete.length} rooms. Active rooms: ${this.rooms.size}`);
+
     }
   }
 
@@ -142,6 +133,14 @@ export class GameLogicManager {
     const room = this.rooms.get(roomId);
     if (!room) return null;
 
+    // Check if player already exists in this room (reconnection case)
+    const existingPlayer = room.players.find(p => p.name.toLowerCase() === playerName.trim().toLowerCase());
+    if (existingPlayer) {
+      // This is a reconnection attempt - mark player as connected and return their existing ID
+      existingPlayer.isConnected = true;
+      return { room, playerId: existingPlayer.id };
+    }
+
     if (room.players.length >= room.maxPlayers) {
       throw new Error('Room is full');
     }
@@ -150,8 +149,10 @@ export class GameLogicManager {
       throw new Error('Game already in progress');
     }
 
-    if (room.players.some(p => p.name === playerName)) {
-      throw new Error('Player name already taken');
+    // Validate the player name globally (only for new players)
+    const validation = this.validatePlayerName(playerName);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
     }
 
     const playerId = uuidv4();
@@ -211,9 +212,6 @@ export class GameLogicManager {
     if (room.status !== 'waiting') {
       throw new Error('Game already started');
     }
-
-    // Stop waiting room mini-game when main game starts
-    this.stopWaitingMini(roomId);
 
     // Deal initial hands (7 cards per player)
     room.players.forEach(player => {
@@ -400,7 +398,7 @@ export class GameLogicManager {
       const playerIndex = room.players.findIndex(p => p.id === playerId);
       if (playerIndex !== -1) {
         const player = room.players[playerIndex];
-        console.log(`🧹 Removing disconnected player "${player.name}" from room "${room.name}"`);
+
         
         // Handle host transfer if needed
         if (player.isHost && room.players.length > 1) {
@@ -416,7 +414,7 @@ export class GameLogicManager {
         // If game is active and not enough players, end game
         if (room.status === 'active' && room.players.length < 3) {
           room.status = 'finished';
-          console.log(`🎮 Game in room "${room.name}" ended due to insufficient players`);
+
         }
       }
     });
@@ -467,7 +465,7 @@ export class GameLogicManager {
 
   // Add method to manually trigger cleanup (for testing/admin purposes)
   manualCleanup() {
-    console.log('🧹 Manual cleanup triggered');
+
     this.performRoomCleanup();
   }
 
@@ -477,120 +475,7 @@ export class GameLogicManager {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    console.log('🧹 GameLogicManager cleanup stopped');
-  }
 
-  // Waiting room mini-game helpers
-  private getOrCreateWaitingMini(room: GameRoom) {
-    if (!room.waitingMini) {
-      room.waitingMini = {
-        width: this.MINI_CONFIG.WIDTH,
-        height: this.MINI_CONFIG.HEIGHT,
-        items: [],
-        players: {}
-      };
-    }
-    return room.waitingMini;
-  }
-
-  private spawnMiniItem(room: GameRoom) {
-    const mini = this.getOrCreateWaitingMini(room);
-    const types: Array<'star' | 'heart' | 'zap'> = ['star', 'heart', 'zap'];
-    const newItem = {
-      id: uuidv4(),
-      x: Math.random() * (mini.width - 30) + 15,
-      y: Math.random() * (mini.height - 30) + 15,
-      type: types[Math.floor(Math.random() * types.length)] as 'star' | 'heart' | 'zap'
-    };
-    mini.items.push(newItem);
-  }
-
-  private ensureMiniSpawnLoop(roomId: string) {
-    const room = this.rooms.get(roomId);
-    if (!room) return;
-    if (this.miniSpawnIntervals.has(roomId)) return;
-
-    const interval = setInterval(() => {
-      const r = this.rooms.get(roomId);
-      if (!r || r.status !== 'waiting') {
-        this.stopWaitingMini(roomId);
-        return;
-      }
-      const mini = this.getOrCreateWaitingMini(r);
-      // Only count active items (those without collectedBy)
-      const activeCount = mini.items.filter(it => !it.collectedBy).length;
-      if (activeCount < this.MINI_CONFIG.ACTIVE_CAP) {
-        this.spawnMiniItem(r);
-      }
-      // Prune fully collected items to avoid unbounded growth
-      if (mini.items.length > 200) {
-        mini.items = mini.items.filter(it => !it.collectedBy).slice(-this.MINI_CONFIG.ACTIVE_CAP);
-      }
-    }, this.MINI_CONFIG.SPAWN_MS);
-
-    this.miniSpawnIntervals.set(roomId, interval);
-  }
-
-  private stopWaitingMini(roomId: string) {
-    const interval = this.miniSpawnIntervals.get(roomId);
-    if (interval) {
-      clearInterval(interval);
-      this.miniSpawnIntervals.delete(roomId);
-    }
-    const room = this.rooms.get(roomId);
-    if (room) {
-      room.waitingMini = undefined;
-    }
-  }
-
-  miniJoin(roomId: string, playerId: string) {
-    const room = this.rooms.get(roomId);
-    if (!room) return null;
-    const mini = this.getOrCreateWaitingMini(room);
-
-    if (!mini.players[playerId]) {
-      mini.players[playerId] = {
-        x: Math.random() * (mini.width - 40) + 20,
-        y: Math.random() * (mini.height - 40) + 20,
-        score: 0
-      };
-    }
-
-    // Ensure we have some items to start and spawn loop running
-    this.ensureMiniSpawnLoop(roomId);
-    return mini;
-  }
-
-  miniMove(roomId: string, playerId: string, x: number, y: number) {
-    const room = this.rooms.get(roomId);
-    if (!room) return null;
-    const mini = this.getOrCreateWaitingMini(room);
-
-    const player = mini.players[playerId];
-    if (!player) return mini;
-
-    // Clamp movement
-    const clampedX = Math.max(20, Math.min(mini.width - 20, x));
-    const clampedY = Math.max(20, Math.min(mini.height - 20, y));
-    player.x = clampedX;
-    player.y = clampedY;
-
-    // Collision detection with active items only
-    for (const item of mini.items) {
-      if (!item.collectedBy) {
-        const dx = item.x - clampedX;
-        const dy = item.y - clampedY;
-        if (Math.abs(dx) < this.MINI_CONFIG.COLLISION_RADIUS && Math.abs(dy) < this.MINI_CONFIG.COLLISION_RADIUS) {
-          item.collectedBy = playerId;
-          player.score += 1;
-        }
-      }
-    }
-
-    // Remove collected items to allow respawn quickly
-    mini.items = mini.items.filter(it => !it.collectedBy);
-
-    return mini;
   }
 
   // Reset a finished game back to waiting state for replay
@@ -623,10 +508,7 @@ export class GameLogicManager {
       player.score = 0;
     });
 
-    // Re-initialize waiting room mini-game
-    this.getOrCreateWaitingMini(room);
 
-    console.log(`🔄 Game reset in room "${room.name}" by ${host.name}`);
     return room;
   }
 
@@ -680,7 +562,7 @@ export class GameLogicManager {
     
     if (round.status === 'playing') {
       // Auto-advance to judging phase if players haven't submitted
-      console.log(`⏰ Round ${round.roundNumber} in room "${room.name}" timed out during playing phase`);
+
       
       // Move to judging phase with whatever plays were submitted
       if (round.plays.length > 0) {
@@ -689,12 +571,12 @@ export class GameLogicManager {
         this.startRoundTimer(room); // Start judge timer
       } else {
         // No plays submitted, skip to next round
-        console.log(`⏰ No plays submitted in room "${room.name}", skipping round`);
+
         this.advanceToNextRound(room);
       }
     } else if (round.status === 'judging') {
       // Auto-select a random winner if judge doesn't decide
-      console.log(`⏰ Judge timeout in room "${room.name}", selecting random winner`);
+
       
       if (round.plays.length > 0) {
         const randomPlay = round.plays[Math.floor(Math.random() * round.plays.length)];
@@ -705,7 +587,7 @@ export class GameLogicManager {
         const winner = room.players.find(p => p.id === randomPlay.playerId);
         if (winner) {
           winner.score += 1;
-          console.log(`🎲 Random winner selected: ${winner.name}`);
+
         }
       } else {
         // No plays to judge, skip to next round
@@ -721,11 +603,37 @@ export class GameLogicManager {
       room.status = 'finished';
       room.currentRound = undefined;
       this.clearRoundTimer(room.id);
-      console.log(`🏆 Game complete in room "${room.name}"! Winner: ${winner.name}`);
+
     } else {
       // Start next round
       this.startNewRound(room);
-      console.log(`➡️ Advanced to next round in room "${room.name}"`);
+
     }
   }
+
+  // Player name management methods
+  validatePlayerName(playerName: string, excludePlayerId?: string): { isValid: boolean; error?: string } {
+    if (!playerName || playerName.trim().length === 0) {
+      return { isValid: false, error: 'Player name cannot be empty' };
+    }
+
+    if (playerName.trim().length > 20) {
+      return { isValid: false, error: 'Player name must be 20 characters or less' };
+    }
+
+    const normalizedName = playerName.trim().toLowerCase();
+
+    // Check if name is already taken by another player
+    for (const room of this.rooms.values()) {
+      for (const player of room.players) {
+        if (player.name.toLowerCase() === normalizedName && player.id !== excludePlayerId) {
+          return { isValid: false, error: 'That player name is already taken. Please choose a different name.' };
+        }
+      }
+    }
+
+    return { isValid: true };
+  }
+
+
 }

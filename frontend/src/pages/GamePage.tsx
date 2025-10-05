@@ -98,7 +98,7 @@ export const GamePage: React.FC = () => {
         </div>
 
         {/* Subtle gradient overlay for depth */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-transparent to-purple-600/10 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pointer-events-none"></div>
       </header>
 
       {/* Game Content */}
