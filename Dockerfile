@@ -28,13 +28,8 @@ RUN npm ci --prefer-offline --no-fund --no-audit
 # ===========================
 FROM frontend-deps AS frontend-builder
 WORKDIR /app/frontend
-COPY frontend/public ./public
-COPY frontend/*.js ./
-COPY frontend/*.cjs ./
-COPY frontend/*.ts ./
-COPY frontend/*.json ./
-COPY frontend/*.html ./
-COPY frontend/src ./src
+# Copy entire frontend source (excluding node_modules by default Docker behavior)
+COPY frontend/ .
 RUN rm -rf dist && npm run build
 
 # ===========================
