@@ -27,7 +27,8 @@ ENV NPM_CONFIG_USERCONFIG=/app/.npmrc \
     NPM_TOKEN= \
     NODE_AUTH_TOKEN=
 RUN rm -f /root/.npmrc /home/node/.npmrc || true \
-  && npm ci --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/
+  && (npm ci --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/ \
+      || (rm -f package-lock.json && npm install --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/))
 
 # ===========================
 # Build frontend
@@ -52,7 +53,8 @@ ENV NPM_CONFIG_USERCONFIG=/app/.npmrc \
     NPM_TOKEN= \
     NODE_AUTH_TOKEN=
 RUN rm -f /root/.npmrc /home/node/.npmrc || true \
-  && npm ci --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/
+  && (npm ci --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/ \
+      || (rm -f package-lock.json && npm install --prefer-offline --no-fund --no-audit --userconfig=/app/.npmrc --registry=https://registry.npmjs.org/))
 
 # ===========================
 # Build backend (TypeScript -> JavaScript)
