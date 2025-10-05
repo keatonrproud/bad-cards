@@ -19,20 +19,14 @@ RUN mkdir -p /app/frontend /app/backend
 FROM base AS frontend-deps
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-# Force public registry and disable auth to avoid E401 in CI builders
-ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+# Use repo .npmrc to force public registry and disable auth
+COPY .npmrc /app/.npmrc
+ENV NPM_CONFIG_USERCONFIG=/app/.npmrc \
+    NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
     NPM_CONFIG_ALWAYS_AUTH=false \
-    NPM_CONFIG_USERCONFIG=/app/frontend/.npmrc \
     NPM_TOKEN= \
-    NODE_AUTH_TOKEN= \
-    npm_config__auth= \
-    npm_config_auth= \
-    NPM_CONFIG__AUTH= \
-    NPM_CONFIG_AUTH=
-RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/frontend/.npmrc \
-  && npm config delete "//registry.npmjs.org/:_authToken" || true \
-  && npm config delete _auth || true \
-  && npm ci --prefer-offline --no-fund --no-audit --registry=https://registry.npmjs.org/
+    NODE_AUTH_TOKEN=
+RUN npm ci --prefer-offline --no-fund --no-audit
 
 # ===========================
 # Build frontend
@@ -49,20 +43,14 @@ RUN rm -rf dist && npm run build
 FROM base AS backend-deps
 WORKDIR /app/backend
 COPY backend/package*.json ./
-# Force public registry and disable auth to avoid E401 in CI builders
-ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+# Use repo .npmrc to force public registry and disable auth
+COPY .npmrc /app/.npmrc
+ENV NPM_CONFIG_USERCONFIG=/app/.npmrc \
+    NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
     NPM_CONFIG_ALWAYS_AUTH=false \
-    NPM_CONFIG_USERCONFIG=/app/backend/.npmrc \
     NPM_TOKEN= \
-    NODE_AUTH_TOKEN= \
-    npm_config__auth= \
-    npm_config_auth= \
-    NPM_CONFIG__AUTH= \
-    NPM_CONFIG_AUTH=
-RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/backend/.npmrc \
-  && npm config delete "//registry.npmjs.org/:_authToken" || true \
-  && npm config delete _auth || true \
-  && npm ci --prefer-offline --no-fund --no-audit --registry=https://registry.npmjs.org/
+    NODE_AUTH_TOKEN=
+RUN npm ci --prefer-offline --no-fund --no-audit
 
 # ===========================
 # Build backend (TypeScript -> JavaScript)
