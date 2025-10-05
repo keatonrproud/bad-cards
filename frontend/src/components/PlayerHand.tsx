@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BlackCard } from '../types/game';
 import { PlayingCard } from './PlayingCard';
 import { Button } from './ui/Button';
+import { cn } from '../utils/cn';
 
 interface PlayerHandProps {
   cards: BlackCard[];
@@ -10,6 +11,7 @@ interface PlayerHandProps {
   onCardsSelected: (cards: BlackCard[]) => void;
   isSelectionPhase: boolean;
   isJudge: boolean;
+  hasSubmitted?: boolean;
 }
 
 export const PlayerHand: React.FC<PlayerHandProps> = ({
@@ -17,12 +19,13 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   maxSelection,
   onCardsSelected,
   isSelectionPhase,
-  isJudge
+  isJudge,
+  hasSubmitted = false
 }) => {
   const [selectedCards, setSelectedCards] = useState<BlackCard[]>([]);
 
   const handleCardClick = (card: BlackCard) => {
-    if (!isSelectionPhase || isJudge) return;
+    if (!isSelectionPhase || isJudge || hasSubmitted) return;
 
     if (selectedCards.some(c => c.id === card.id)) {
       // Deselect card
@@ -40,56 +43,85 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
     }
   };
 
-  const canSubmit = selectedCards.length === maxSelection && isSelectionPhase && !isJudge;
+  const canSubmit = selectedCards.length === maxSelection && isSelectionPhase && !isJudge && !hasSubmitted;
 
   if (isJudge) {
     return (
-      <div className="bg-card rounded-lg p-4 border">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg font-semibold mb-2">You are the judge this round!</p>
-          <p>Wait for other players to submit their cards, then choose the winner.</p>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+        <div className="text-blue-800">
+          <p className="font-semibold mb-1">👨‍⚖️ You are the judge!</p>
+          <p className="text-sm">Wait for submissions, then pick the winner.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasSubmitted) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+        <div className="text-green-800">
+          <p className="font-semibold mb-1">✅ Cards submitted!</p>
+          <p className="text-sm">Waiting for other players and judge decision.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Selection status */}
+    <div className="space-y-3">
+      {/* Selection status and submit button */}
       {isSelectionPhase && (
-        <div className="bg-card rounded-lg p-3 border">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
+        <div className="flex items-center justify-between bg-white/80 backdrop-blur rounded-lg p-3 border">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
               Select {maxSelection} card{maxSelection > 1 ? 's' : ''}
-              {selectedCards.length > 0 && ` (${selectedCards.length}/${maxSelection})`}
-            </p>
-            {canSubmit && (
-              <Button onClick={handleSubmit} size="sm">
-                Submit Cards
-              </Button>
+            </span>
+            {selectedCards.length > 0 && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+                {selectedCards.length}/{maxSelection}
+              </span>
             )}
           </div>
+          
+          {canSubmit && (
+            <Button 
+              onClick={handleSubmit} 
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Submit Cards
+            </Button>
+          )}
         </div>
       )}
 
-      {/* Cards grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        <AnimatePresence>
+      {/* Compact cards grid - mobile optimized */}
+      <div className={cn(
+        'grid gap-2',
+        // Responsive grid: 3 cols on mobile, 4 on tablet, 5+ on desktop
+        'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7'
+      )}>
+        <AnimatePresence mode="popLayout">
           {cards.map((card, index) => (
             <motion.div
               key={card.id}
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ delay: index * 0.1 }}
+              layout
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ 
+                delay: index * 0.05,
+                duration: 0.2,
+                layout: { duration: 0.3 }
+              }}
             >
               <PlayingCard
                 card={card}
                 type="black"
+                size="sm"
                 isSelected={selectedCards.some(c => c.id === card.id)}
-                isSelectable={isSelectionPhase && !isJudge}
+                isSelectable={isSelectionPhase && !isJudge && !hasSubmitted}
                 onClick={() => handleCardClick(card)}
-                className="h-32"
               />
             </motion.div>
           ))}
@@ -97,8 +129,8 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
       </div>
 
       {cards.length === 0 && (
-        <div className="text-center text-muted-foreground py-8">
-          <p>No cards in hand</p>
+        <div className="text-center text-gray-500 py-6">
+          <p className="text-sm">No cards in hand</p>
         </div>
       )}
     </div>

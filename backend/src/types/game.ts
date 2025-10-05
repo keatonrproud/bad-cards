@@ -61,7 +61,7 @@ export interface GameState {
 
 export interface SocketEvents {
   // Client to Server
-  'create-room': (data: { roomName: string; playerName: string; maxPlayers: number }) => void;
+  'create-room': (data: { roomName: string; playerName: string; maxPlayers: number; maxScore?: number; roundTimer?: number }) => void;
   'join-room': (data: { roomId: string; playerName: string }) => void;
   'leave-room': (data: { roomId: string }) => void;
   'reconnect-player': (data: { playerId: string; roomId: string }) => void;

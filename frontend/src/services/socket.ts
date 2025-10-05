@@ -90,9 +90,9 @@ class SocketService {
   }
 
   // Room management
-  createRoom(roomName: string, playerName: string, maxPlayers: number = 8) {
-    if (DEBUG) console.log('�� Creating room:', { roomName, playerName, maxPlayers });
-    this.emitWhenConnected('create-room', { roomName, playerName, maxPlayers });
+  createRoom(roomName: string, playerName: string, maxPlayers: number = 8, maxScore: number = 7, roundTimer: number = 45) {
+    console.log('Creating room:', { roomName, playerName, maxPlayers, maxScore, roundTimer });
+    this.emitWhenConnected('create-room', { roomName, playerName, maxPlayers, maxScore, roundTimer });
   }
 
   joinRoom(roomId: string, playerName: string) {

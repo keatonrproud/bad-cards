@@ -72,6 +72,7 @@
       0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
 
+  /* Legacy card styles for backward compatibility */
   .playing-card {
     @apply rounded-lg border-2 transition-all duration-200 cursor-pointer;
     aspect-ratio: 2.5 / 3.5;
@@ -79,11 +80,11 @@
   }
 
   .white-card {
-    @apply playing-card bg-white-card text-black border-gray-300;
+    @apply playing-card bg-white text-black border-gray-300;
   }
 
   .black-card {
-    @apply playing-card bg-black-card text-white border-gray-700;
+    @apply playing-card bg-gray-900 text-white border-gray-700;
   }
 
   .card-selected {
@@ -94,6 +95,7 @@
     @apply hover:shadow-lg hover:-translate-y-1;
   }
 
+  /* Game-specific backgrounds */
   .gradient-bg {
     background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   }
@@ -101,10 +103,76 @@
   .bad-cards-bg {
     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e3a8a 100%);
   }
+
+  /* Game board layout utilities */
+  .game-container {
+    @apply min-h-screen flex flex-col;
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+
+  .game-header {
+    @apply bg-white/90 backdrop-blur border-b border-gray-200 p-3 flex-shrink-0;
+  }
+
+  .game-content {
+    @apply flex-1 flex flex-col p-3 gap-3 min-h-0;
+  }
+
+  /* Responsive card grids */
+  .card-grid-compact {
+    @apply grid gap-2;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .card-grid-compact {
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .card-grid-compact {
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+  }
+
+  /* Mobile-first responsive utilities */
+  .mobile-stack {
+    @apply flex flex-col gap-2;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-stack {
+      @apply flex-row items-center justify-between;
+    }
+  }
+
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+
+  /* Smooth animations with reduced motion support */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-smooth {
+      @apply transition-all duration-300 ease-out;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-smooth {
+      @apply transition-none;
+    }
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .text-shadow {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 }

@@ -8,11 +8,13 @@ export class GameLogicManager {
   private blackCardDeck: BlackCard[] = [];
   private cleanupInterval: NodeJS.Timeout | null = null;
   private miniSpawnIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private roundTimers: Map<string, NodeJS.Timeout> = new Map();
+  private roomUpdateCallback?: (room: GameRoom) => void;
 
   // Cleanup configuration (in milliseconds)
   private readonly CLEANUP_CONFIG = {
     SINGLE_PLAYER_TIMEOUT: 30 * 60 * 1000,      // 30 minutes alone
-    DISCONNECTED_PLAYER_TIMEOUT: 10 * 60 * 1000, // 10 minutes disconnected
+    DISCONNECTED_PLAYER_TIMEOUT: 30 * 60 * 1000, // 30 minutes disconnected, to allow for reconnections
     FINISHED_GAME_TIMEOUT: 60 * 60 * 1000,       // 1 hour after game finished  
     INACTIVE_WAITING_TIMEOUT: 2 * 60 * 60 * 1000, // 2 hours in waiting state
     CLEANUP_INTERVAL: 5 * 60 * 1000              // Check every 5 minutes
@@ -29,6 +31,10 @@ export class GameLogicManager {
   constructor() {
     this.initializeDecks();
     this.startPeriodicCleanup();
+  }
+  
+  setRoomUpdateCallback(callback: (room: GameRoom) => void) {
+    this.roomUpdateCallback = callback;
   }
 
   private initializeDecks() {
@@ -90,6 +96,7 @@ export class GameLogicManager {
 
     // Delete marked rooms
     roomsToDelete.forEach(roomId => {
+      this.clearRoundTimer(roomId);
       this.rooms.delete(roomId);
     });
 
@@ -98,7 +105,7 @@ export class GameLogicManager {
     }
   }
 
-  createRoom(roomName: string, hostName: string, maxPlayers: number = 8): { room: GameRoom; playerId: string } {
+  createRoom(roomName: string, hostName: string, maxPlayers: number = 8, maxScore: number = 7, roundTimer: number = 45): { room: GameRoom; playerId: string } {
     const roomId = uuidv4();
     const hostId = uuidv4();
     
@@ -120,8 +127,8 @@ export class GameLogicManager {
       status: 'waiting',
       rounds: [],
       settings: {
-        maxScore: 1,
-        roundTimer: 90,
+        maxScore,
+        roundTimer,
         judgeTimer: 60
       },
       createdAt: new Date()
@@ -240,11 +247,14 @@ export class GameLogicManager {
       judgeId: judge.id,
       plays: [],
       status: 'playing',
-      timeRemaining: room.settings.roundTimer
+      timeRemaining: room.settings.roundTimer * 1000
     };
 
     room.currentRound = round;
     room.rounds.push(round);
+    
+    // Start round timer
+    this.startRoundTimer(room);
   }
 
   playCards(roomId: string, playerId: string, cards: BlackCard[]): GameRoom | null {
@@ -296,7 +306,8 @@ export class GameLogicManager {
     const nonJudgePlayers = room.players.filter(p => p.id !== round.judgeId);
     if (round.plays.length === nonJudgePlayers.length) {
       round.status = 'judging';
-      round.timeRemaining = room.settings.judgeTimer;
+      round.timeRemaining = room.settings.judgeTimer * 1000;
+      this.startRoundTimer(room); // Start judge timer
     }
 
     return room;
@@ -325,6 +336,9 @@ export class GameLogicManager {
 
     round.winningPlayId = winningPlay.playerId;
     round.status = 'results';
+    
+    // Clear round timer since judging is complete
+    this.clearRoundTimer(room.id);
 
     // Award point to winner
     const winner = room.players.find(p => p.id === winningPlay.playerId)!;
@@ -595,6 +609,9 @@ export class GameLogicManager {
       throw new Error('Can only restart finished games');
     }
 
+    // Clear any active timers
+    this.clearRoundTimer(room.id);
+    
     // Reset game state
     room.status = 'waiting';
     room.currentRound = undefined;
@@ -611,5 +628,104 @@ export class GameLogicManager {
 
     console.log(`🔄 Game reset in room "${room.name}" by ${host.name}`);
     return room;
+  }
+
+  private startRoundTimer(room: GameRoom): void {
+    if (!room.currentRound) return;
+    
+    // Clear any existing timer for this room
+    this.clearRoundTimer(room.id);
+    
+    const round = room.currentRound;
+    const timerDuration = room.settings.roundTimer * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    
+    // Update timer every second
+    const updateInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, timerDuration - elapsed);
+      
+      if (round.timeRemaining !== undefined) {
+        round.timeRemaining = remaining;
+        
+        // Emit room update for timer
+        if (this.roomUpdateCallback) {
+          this.roomUpdateCallback(room);
+        }
+      }
+      
+      // Auto-advance when time runs out
+      if (remaining <= 0) {
+        clearInterval(updateInterval);
+        this.roundTimers.delete(room.id);
+        this.handleRoundTimeout(room);
+      }
+    }, 1000);
+    
+    this.roundTimers.set(room.id, updateInterval);
+  }
+  
+  private clearRoundTimer(roomId: string): void {
+    const timer = this.roundTimers.get(roomId);
+    if (timer) {
+      clearInterval(timer);
+      this.roundTimers.delete(roomId);
+    }
+  }
+  
+  private handleRoundTimeout(room: GameRoom): void {
+    if (!room.currentRound) return;
+    
+    const round = room.currentRound;
+    
+    if (round.status === 'playing') {
+      // Auto-advance to judging phase if players haven't submitted
+      console.log(`⏰ Round ${round.roundNumber} in room "${room.name}" timed out during playing phase`);
+      
+      // Move to judging phase with whatever plays were submitted
+      if (round.plays.length > 0) {
+        round.status = 'judging';
+        round.timeRemaining = room.settings.judgeTimer * 1000;
+        this.startRoundTimer(room); // Start judge timer
+      } else {
+        // No plays submitted, skip to next round
+        console.log(`⏰ No plays submitted in room "${room.name}", skipping round`);
+        this.advanceToNextRound(room);
+      }
+    } else if (round.status === 'judging') {
+      // Auto-select a random winner if judge doesn't decide
+      console.log(`⏰ Judge timeout in room "${room.name}", selecting random winner`);
+      
+      if (round.plays.length > 0) {
+        const randomPlay = round.plays[Math.floor(Math.random() * round.plays.length)];
+        round.winningPlayId = randomPlay.playerId;
+        round.status = 'results';
+        
+        // Award point to winner
+        const winner = room.players.find(p => p.id === randomPlay.playerId);
+        if (winner) {
+          winner.score += 1;
+          console.log(`🎲 Random winner selected: ${winner.name}`);
+        }
+      } else {
+        // No plays to judge, skip to next round
+        this.advanceToNextRound(room);
+      }
+    }
+  }
+  
+  private advanceToNextRound(room: GameRoom): void {
+    // Check if game is complete
+    const winner = room.players.find(p => p.score >= room.settings.maxScore);
+    if (winner) {
+      room.status = 'finished';
+      room.currentRound = undefined;
+      this.clearRoundTimer(room.id);
+      console.log(`🏆 Game complete in room "${room.name}"! Winner: ${winner.name}`);
+    } else {
+      // Start next round
+      this.startNewRound(room);
+      console.log(`➡️ Advanced to next round in room "${room.name}"`);
+    }
   }
 }

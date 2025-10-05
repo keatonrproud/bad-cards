@@ -79,6 +79,11 @@ const io = new Server(server, {
 // Initialize socket handler
 const socketHandler = new SocketHandler(io, gameManager);
 
+// Set up room update callback for timer updates
+gameManager.setRoomUpdateCallback((room) => {
+  io.to(room.id).emit('room-update', { room });
+});
+
 // Handle socket connections
 io.on('connection', (socket) => {
   socketHandler.handleConnection(socket);

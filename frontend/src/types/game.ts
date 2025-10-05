@@ -56,6 +56,7 @@ export interface PublicRoom {
   name: string;
   playerCount: number;
   maxPlayers: number;
+  maxScore: number;
   status: string;
   createdAt: Date;
 }

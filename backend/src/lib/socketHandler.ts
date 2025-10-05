@@ -24,10 +24,10 @@ export class SocketHandler {
     });
 
     // Handle room creation
-    socket.on('create-room', (data: { roomName: string; playerName: string; maxPlayers: number }) => {
+    socket.on('create-room', (data: { roomName: string; playerName: string; maxPlayers: number; maxScore?: number; roundTimer?: number }) => {
       try {
-        const { roomName, playerName, maxPlayers } = data;
-        const { room, playerId } = this.gameManager.createRoom(roomName, playerName, maxPlayers);
+        const { roomName, playerName, maxPlayers, maxScore = 7, roundTimer = 45 } = data;
+        const { room, playerId } = this.gameManager.createRoom(roomName, playerName, maxPlayers, maxScore, roundTimer);
         
         // Store player-socket mapping
         this.playerSockets.set(playerId, socket.id);
@@ -266,8 +266,8 @@ export class SocketHandler {
       
       const playerId = this.socketPlayers.get(socket.id);
       if (playerId) {
-        // Clean up mappings
-        this.playerSockets.delete(playerId);
+        // Don't immediately clean up mappings - keep them for potential reconnection
+        // Only clean up the socket -> player mapping, keep player -> socket for reconnection attempts
         this.socketPlayers.delete(socket.id);
         
         // Find and update all rooms this player is in
@@ -299,6 +299,17 @@ export class SocketHandler {
         if (!player) {
           socket.emit('error', { message: 'Player not found in room' });
           return;
+        }
+
+        // Check if player is already connected from another socket
+        const existingSocketId = this.playerSockets.get(playerId);
+        if (existingSocketId && existingSocketId !== socket.id) {
+          // Disconnect the old socket if it exists
+          const existingSocket = this.io.sockets.sockets.get(existingSocketId);
+          if (existingSocket) {
+            if (DEBUG) console.log(`🔌 Disconnecting old socket for player "${player.name}"`);
+            existingSocket.disconnect();
+          }
         }
 
         // Update player-socket mapping

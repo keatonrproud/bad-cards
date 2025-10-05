@@ -6,7 +6,9 @@ import { socketService } from '../services/socket';
 import { PlayingCard } from './PlayingCard';
 import { PlayerHand } from './PlayerHand';
 import { Button } from './ui/Button';
-import { Trophy, Crown, Users, Timer, Star, Zap, Heart } from 'lucide-react';
+import { Timer } from './Timer';
+import { Scoreboard } from './Scoreboard';
+import { Trophy, Crown, Users, Star, Zap, Heart } from 'lucide-react';
 
 // Interactive waiting room mini-game
 interface CollectibleItem {
@@ -306,9 +308,7 @@ export const GameBoard: React.FC = () => {
         )}
       </div>
 
-      {/* Interactive Mini-Game */}
-      <WaitingRoomGame players={currentRoom.players} playerId={playerId} roomId={currentRoom.id} />
-
+      {/* Start Game Button - moved above mini game */}
       {currentPlayer.isHost && currentRoom.players.length >= 3 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -325,6 +325,9 @@ export const GameBoard: React.FC = () => {
           </Button>
         </motion.div>
       )}
+
+      {/* Interactive Mini-Game */}
+      <WaitingRoomGame players={currentRoom.players} playerId={playerId} roomId={currentRoom.id} />
     </div>
   );
 
@@ -384,152 +387,149 @@ export const GameBoard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Game Header */}
-      <div className="bg-card rounded-lg p-4 border">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-yellow-500" />
-              <span className="font-semibold">Round {currentRound.roundNumber}</span>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Compact Game Header */}
+      <div className="bg-white/90 backdrop-blur border-b border-gray-200 p-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              <span className="font-semibold text-sm">R{currentRound.roundNumber}</span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs text-gray-600 hidden sm:block">
               Judge: {currentRoom.players.find(p => p.id === currentRound.judgeId)?.name}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          
+          <div className="flex items-center gap-3">
             {currentRound.timeRemaining && (
-              <div className="flex items-center gap-1 text-sm">
-                <Timer className="w-4 h-4" />
-                <span>{Math.floor(currentRound.timeRemaining / 1000)}s</span>
-              </div>
+              <Timer
+                timeRemaining={currentRound.timeRemaining / 1000}
+                totalTime={currentRoom.settings.roundTimer}
+                size="sm"
+              />
             )}
-            <div className="text-sm font-medium">
-              Goal: {currentRoom.settings.maxScore} points
+            <div className="text-xs font-medium text-gray-600 hidden sm:block">
+              Goal: {currentRoom.settings.maxScore}
             </div>
           </div>
         </div>
       </div>
 
-      {/* White Card */}
-      <div className="flex justify-center">
-        <div className="w-full max-w-md">
+      {/* Main Game Area */}
+      <div className="flex-1 flex flex-col p-3 gap-3 min-h-0">
+        {/* Prompt Card - Centered and Prominent */}
+        <div className="flex justify-center">
           <PlayingCard
             card={currentRound.whiteCard}
             type="white"
-            className="h-48"
+            size="lg"
+            className="shadow-lg"
           />
         </div>
-      </div>
 
-      {/* Game Phase Content */}
-      {currentRound.status === 'playing' && (
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-lg font-medium mb-2">
-              {isJudge ? 'You are the judge - wait for submissions!' : 'Select your cards!'}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Waiting for {currentRoom.players.length - currentRound.plays.length - 1} more players...
-            </p>
-          </div>
-          
-          <PlayerHand
-            cards={currentPlayer.hand}
-            maxSelection={currentRound.whiteCard.blanks}
-            onCardsSelected={handlePlayCards}
-            isSelectionPhase={!hasPlayedThisRound}
-            isJudge={isJudge}
-          />
-        </div>
-      )}
-
-      {currentRound.status === 'judging' && (
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-lg font-medium mb-2">
-              {isJudge ? 'Choose the winning play!' : 'Judge is selecting the winner...'}
-            </p>
-            {isJudge && (
-              <p className="text-sm text-muted-foreground mb-4">
-                Click on the card combination you think is funniest
-              </p>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentRound.plays.map((play, index) => (
-              <motion.div
-                key={`${play.playerId}-${index}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`p-4 border-2 rounded-lg ${
-                  isJudge 
-                    ? 'cursor-pointer hover:bg-accent hover:border-game-blue hover:shadow-md transition-all duration-200 active:scale-95' 
-                    : ''
-                }`}
-                onClick={isJudge ? () => handleJudgePlay(play.playerId) : undefined}
-              >
-                <div className="space-y-2">
-                  {play.cards.map((card, _cardIndex) => (
-                    <PlayingCard
-                      key={card.id}
-                      card={card}
-                      type="black"
-                      className="h-24"
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {currentRound.status === 'results' && (
-        <div className="space-y-4 text-center">
-          <div>
-            <p className="text-lg font-medium mb-2">Round Complete!</p>
-            <p className="text-xl text-game-blue font-semibold">
-              Winner: {currentRoom.players.find(p => p.id === currentRound.winningPlayId)?.name}
-            </p>
-          </div>
-          
-          {currentPlayer.isHost && (
-            <Button 
-              onClick={handleNextRound}
-              size="lg"
-              className="bg-game-blue hover:bg-game-blue-dark"
-            >
-              Next Round
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Scoreboard */}
-      <div className="bg-card rounded-lg p-4 border">
-        <h3 className="font-semibold mb-3">Scoreboard</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {currentRoom.players
-            .sort((a, b) => b.score - a.score)
-            .map((player, index) => (
-              <div
-                key={player.id}
-                className={`p-2 rounded text-center ${
-                  player.id === playerId ? 'bg-game-blue text-white' : 'bg-muted'
-                }`}
-              >
-                <div className="font-medium text-sm">{player.name}</div>
-                <div className="text-lg font-bold">{player.score}</div>
-                {index === 0 && player.score > 0 && (
-                  <Crown className="w-4 h-4 mx-auto text-yellow-500" />
+        {/* Game Phase Content */}
+        <div className="flex-1 flex flex-col gap-3 min-h-0">
+          {currentRound.status === 'playing' && (
+            <>
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-700">
+                  {isJudge ? '👨‍⚖️ You are the judge!' : 'Select your cards!'}
+                </p>
+                {!isJudge && (
+                  <p className="text-xs text-gray-500">
+                    Waiting for {currentRoom.players.length - currentRound.plays.length - 1} more players...
+                  </p>
                 )}
               </div>
-            ))}
+              
+              <div className="flex-1 min-h-0">
+                <PlayerHand
+                  cards={currentPlayer.hand}
+                  maxSelection={currentRound.whiteCard.blanks}
+                  onCardsSelected={handlePlayCards}
+                  isSelectionPhase={!hasPlayedThisRound}
+                  isJudge={isJudge}
+                  hasSubmitted={hasPlayedThisRound}
+                />
+              </div>
+            </>
+          )}
+
+          {currentRound.status === 'judging' && (
+            <>
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-700">
+                  {isJudge ? '⚖️ Choose the winner!' : '⏳ Judge is deciding...'}
+                </p>
+                {isJudge && (
+                  <p className="text-xs text-gray-500">
+                    Tap the funniest combination
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {currentRound.plays.map((play, index) => (
+                    <motion.div
+                      key={`${play.playerId}-${index}`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`p-3 border-2 rounded-xl bg-white/80 backdrop-blur ${
+                        isJudge 
+                          ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-300 hover:shadow-lg transition-all duration-200 active:scale-95' 
+                          : 'border-gray-200'
+                      }`}
+                      onClick={isJudge ? () => handleJudgePlay(play.playerId) : undefined}
+                    >
+                      <div className="space-y-2">
+                        {play.cards.map((card, cardIndex) => (
+                          <PlayingCard
+                            key={card.id}
+                            card={card}
+                            type="black"
+                            size="sm"
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentRound.status === 'results' && (
+            <div className="text-center space-y-4">
+              <div>
+                <p className="text-lg font-semibold text-green-700 mb-2">🎉 Round Complete!</p>
+                <p className="text-xl font-bold text-blue-600">
+                  Winner: {currentRoom.players.find(p => p.id === currentRound.winningPlayId)?.name}
+                </p>
+              </div>
+              
+              {currentPlayer.isHost && (
+                <Button 
+                  onClick={handleNextRound}
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Next Round
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Compact Bottom Scoreboard */}
+      <Scoreboard
+        players={currentRoom.players}
+        currentPlayerId={playerId}
+        maxScore={currentRoom.settings.maxScore}
+      />
     </div>
   );
 };

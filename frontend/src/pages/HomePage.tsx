@@ -17,6 +17,8 @@ export const HomePage: React.FC = () => {
   const [playerName, setPlayerName] = useState('');
   const [roomName, setRoomName] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(8);
+  const [maxScore, setMaxScore] = useState(7);
+  const [roundTimer, setRoundTimer] = useState(45);
   const [joiningRoomId, setJoiningRoomId] = useState<string>('');
   const [showHowToPlay, setShowHowToPlay] = useState(false);
 
@@ -24,7 +26,7 @@ export const HomePage: React.FC = () => {
   const { data: roomsData, isLoading, refetch } = useQuery({
     queryKey: ['rooms'],
     queryFn: () => gameAPI.getRooms(),
-    refetchInterval: 5000,
+    refetchInterval: 1000,
   });
 
   const handleCreateRoom = async () => {
@@ -34,7 +36,7 @@ export const HomePage: React.FC = () => {
     
     // Connect socket and create room
     socketService.connect();
-    socketService.createRoom(roomName.trim(), playerName.trim(), maxPlayers);
+    socketService.createRoom(roomName.trim(), playerName.trim(), maxPlayers, maxScore, roundTimer);
   };
 
   const handleJoinRoom = (roomId: string) => {
@@ -79,7 +81,7 @@ export const HomePage: React.FC = () => {
           </div>
           <div>
             <h4 className="font-semibold text-game-blue">🏆 Winning</h4>
-            <p>First player to reach 7 points wins the game!</p>
+            <p>First player to reach the target score wins the game! (Customizable when creating a room)</p>
           </div>
           <div>
             <h4 className="font-semibold text-game-blue">🎯 Strategy</h4>
@@ -182,6 +184,38 @@ export const HomePage: React.FC = () => {
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Points to Win
+                      </label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                        value={maxScore}
+                        onChange={(e) => setMaxScore(Number(e.target.value))}
+                        disabled={isCreating || isJoining}
+                      >
+                        {[3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                          <option key={num} value={num}>{num} points</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Round Timer
+                      </label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                        value={roundTimer}
+                        onChange={(e) => setRoundTimer(Number(e.target.value))}
+                        disabled={isCreating || isJoining}
+                      >
+                        <option value={30}>30 seconds</option>
+                        <option value={45}>45 seconds</option>
+                        <option value={60}>1 minute</option>
+                        <option value={90}>1 min 30 sec</option>
+                        <option value={120}>2 minutes</option>
+                      </select>
+                    </div>
                     <Button
                       onClick={handleCreateRoom}
                       disabled={!playerName.trim() || !roomName.trim() || isCreating || isJoining}
@@ -246,7 +280,7 @@ export const HomePage: React.FC = () => {
                         <div className="flex-1">
                           <div className="font-medium">{room.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {room.playerCount}/{room.maxPlayers} players • {room.status}
+                            {room.playerCount}/{room.maxPlayers} players • {room.status} • {room.maxScore} points to win
                           </div>
                         </div>
                         <Button

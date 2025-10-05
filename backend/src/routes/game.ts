@@ -12,6 +12,7 @@ router.get('/rooms', (req, res) => {
       name: room.name,
       playerCount: room.players.length,
       maxPlayers: room.maxPlayers,
+      maxScore: room.settings.maxScore,
       status: room.status,
       createdAt: room.createdAt
     }));
