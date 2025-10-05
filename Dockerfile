@@ -19,9 +19,12 @@ RUN mkdir -p /app/frontend /app/backend
 FROM base AS frontend-deps
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-# Disable npm auth for public packages
-ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
-RUN npm ci --prefer-offline --no-fund --no-audit
+# Force public registry and disable auth to avoid E401 in CI builders
+ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+    NPM_CONFIG_ALWAYS_AUTH=false \
+    NPM_CONFIG_USERCONFIG=/app/frontend/.npmrc
+RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/frontend/.npmrc \
+  && npm ci --prefer-offline --no-fund --no-audit
 
 # ===========================
 # Build frontend
@@ -38,10 +41,12 @@ RUN rm -rf dist && npm run build
 FROM base AS backend-deps
 WORKDIR /app/backend
 COPY backend/package*.json ./
-# Disable npm auth for public packages
-ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
-# Install all dependencies including devDependencies for building
-RUN npm ci --prefer-offline --no-fund --no-audit
+# Force public registry and disable auth to avoid E401 in CI builders
+ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+    NPM_CONFIG_ALWAYS_AUTH=false \
+    NPM_CONFIG_USERCONFIG=/app/backend/.npmrc
+RUN echo "registry=https://registry.npmjs.org/\nalways-auth=false" > /app/backend/.npmrc \
+  && npm ci --prefer-offline --no-fund --no-audit
 
 # ===========================
 # Build backend (TypeScript -> JavaScript)
