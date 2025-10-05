@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 
 import gameRoutes from './routes/game';
 import { GameLogicManager } from './lib/gameLogic';
@@ -70,6 +71,15 @@ const socketHandler = new SocketHandler(io, gameManager);
 // Handle socket connections
 io.on('connection', (socket) => {
   socketHandler.handleConnection(socket);
+});
+
+// Serve frontend static files in production
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+// Serve index.html for non-API routes (SPA fallback)
+app.get(/^\/(?!api).*/, (req, res) => {
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 
 // Error handling middleware

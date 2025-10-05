@@ -9,6 +9,7 @@ primary_region = 'yyz'
 [env]
   NODE_ENV = 'production'
   PORT = '3002'
+  FRONTEND_URL = 'https://bad-cards.fly.dev'
 
 [deploy]
   strategy = 'rolling'
