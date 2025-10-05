@@ -1,0 +1,59 @@
+# fly.toml file for bad-cards (Node/React)
+app = 'bad-cards'
+primary_region = 'yyz'
+
+[build]
+  dockerfile = 'Dockerfile'
+  target = 'production'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3002'
+
+[deploy]
+  strategy = 'rolling'
+
+[[services]]
+  internal_port = 3002
+  protocol = 'tcp'
+  auto_stop_machines = 'suspend'
+  auto_start_machines = true
+  min_machines_running = 0
+  max_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ['tls', 'http']
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 40
+    soft_limit = 30
+
+  [[services.tcp_checks]]
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '10s'
+
+  [[services.http_checks]]
+    interval = '10s'
+    timeout = '5s'
+    grace_period = '15s'
+    method = 'get'
+    path = '/api/health'
+    protocol = 'http'
+    tls_skip_verify = true
+
+[metrics]
+  port = 9091
+  path = '/metrics'
+
+[vm]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
